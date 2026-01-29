@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>S. mutans vs Molar — scale scroll</title>
+  <style>
+    :root{
+      --bg:#0b0d12;
+      --fg:#e8ecf3;
+      --muted:#aab4c4;
+      --hair:rgba(232,236,243,.14);
+      --card:rgba(255,255,255,.06);
+      --card2:rgba(255,255,255,.08);
+      --accent: #7aa7ff;
+    }
+    html,body{height:100%; margin:0; background:var(--bg); color:var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+    a{color:var(--accent); text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{position:relative; min-height:100%;}
+    /* Big scroll area like the wealth site */
+    .scroller{
+      height: 5200vh; /* dial this to change how long the journey feels */
+      position:relative;
+    }
+    /* Sticky stage */
+    .stage{
+      position:sticky;
+      top:0;
+      height:100vh;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* Visual layer */
+    #viz{
+      position:absolute;
+      inset:0;
+    }
+
+    /* UI overlay */
+    .hud{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+    }
+    .topbar{
+      pointer-events:auto;
+      position:absolute;
+      top:18px;
+      left:18px;
+      right:18px;
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--hair);
+      border-radius:16px;
+      padding:12px 14px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 40px rgba(0,0,0,.25);
+      max-width:min(560px, 92vw);
+    }
+    .title{
+      font-weight:650;
+      letter-spacing:.2px;
+      font-size:14px;
+      margin:0 0 6px 0;
+      color:var(--fg);
+    }
+    .meta{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+      margin:0;
+    }
+    .pillrow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .pill{
+      font-size:12px;
+      border:1px solid var(--hair);
+      background:var(--card2);
+      color:var(--fg);
+      padding:6px 10px;
+      border-radius:999px;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+    }
+    .dot{width:9px; height:9px; border-radius:50%;}
+    .dot.sm{background:#ffdd7a;}
+    .dot.molar{background:#7aa7ff;}
+    .dot.scale{background:#92ffa7;}
+
+    .rightcol{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:flex-end;
+    }
+
+    .scaleCard{
+      pointer-events:none;
+      text-align:right;
+      min-width: 220px;
+    }
+    .scaleBig{
+      font-size:14px;
+      font-weight:650;
+      margin:0 0 4px 0;
+    }
+    .scaleSmall{
+      font-size:12px;
+      color:var(--muted);
+      margin:0;
+      line-height:1.35;
+    }
+
+    /* Bottom hint */
+    .hint{
+      position:absolute;
+      left:50%;
+      bottom:22px;
+      transform:translateX(-50%);
+      font-size:12px;
+      color:var(--muted);
+      border:1px solid var(--hair);
+      background:var(--card);
+      padding:8px 12px;
+      border-radius:999px;
+      backdrop-filter: blur(10px);
+    }
+
+    /* Footer text after the sticky stage (not sticky) */
+    .after{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 64px 18px 120px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+    .after h2{color:var(--fg); margin:0 0 10px 0}
+    .after code{background:rgba(255,255,255,.06); padding:2px 6px; border-radius:8px; border:1px solid var(--hair)}
+    .after .sources{font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="scroller" id="scroller">
+      <div class="stage">
+        <canvas id="viz"></canvas>
+
+        <div class="hud">
+          <div class="topbar">
+            <div class="card">
+              <p class="title">Scale scroll: <span style="color:var(--accent)">S. mutans</span> vs an average mandibular molar crown</p>
+              <p class="meta">
+                Scroll down to zoom smoothly from the bacterial scale (micrometers) to tooth scale (millimeters).
+                This is a visual intuition tool — proportions are the point.
+              </p>
+              <div class="pillrow">
+                <span class="pill"><span class="dot sm"></span><span><b>S. mutans</b> diameter ≈ 0.5–0.75 µm</span></span>
+                <span class="pill"><span class="dot molar"></span><span><b>Mandibular molar crown</b> ≈ 7 mm (CO) × 10mm (MD)</span></span>
+                <span class="pill"><span class="dot scale"></span><span><b>Ruler</b> updates with zoom</span></span>
+              </div>
+            </div>
+
+            <div class="rightcol">
+              <div class="card scaleCard">
+                <p class="scaleBig" id="scaleBig">Loading…</p>
+                <p class="scaleSmall" id="scaleSmall"></p>
+              </div>
+              <div class="card scaleCard">
+                <p class="scaleBig" id="compareBig">—</p>
+                <p class="scaleSmall" id="compareSmall"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="hint">Scroll ↓ to zoom (Shift+Scroll / trackpad works best)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="after">
+      <h2>What you’re seeing</h2>
+      <p>
+        This interative digital work visualises the vast scale difference between <i>S. mutans</i> and a permanent mandibular molar tooth to reflect how foundational bioscience underpins everyday clinical reasoning.
+      </p>
+      <p>
+        By moving from the microscopic level of cariogenic bacteria to the macroscopic anatomy of the tooth, the work represents how microbiology, tooth morphology, and pathology converge in caries risk assessment and management.
+      </p>
+      <p class="sources">
+        Dimension assumptions used in this demo: <i>S. mutans</i> diameter ≈ 0.5–0.75 µm; maxillary first molar crown CO ≈ 7 mm and MD ≈ 10 mm, crown height ≈ 7.5–8.4 mm.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ====== Reference dimensions (in micrometers) ======
+    // S. mutans: 0.5–0.75 µm diameter; use 0.65 µm as a representative midpoint.
+    const SM_DIAM_UM = 0.65;
+
+    // Molar crown: use a representative maxillary first molar crown footprint.
+    // Cervico-occlusal (CO) 7 mm,  mesiodistal (MD) ~ 10 mm
+
+    const MOLAR_CO_UM = 7000; // 7 mm
+    const MOLAR_MD_UM = 10000; // 10 mm
+
+    // ====== Canvas setup ======
+    const canvas = document.getElementById('viz');
+    const ctx = canvas.getContext('2d');
+
+    function resize(){
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ====== Log-zoom model ======
+    // We map scroll progress [0..1] to a "micrometers per pixel" value on a log scale.
+    // Start: 0.01 µm/px (very zoomed in)
+    // End:   100 µm/px (lets the tooth fit on screen)
+    const UM_PER_PX_MIN = 0.01;
+    const UM_PER_PX_MAX = 100;
+
+    function logLerp(a, b, t){
+      // interpolate in log space
+      const la = Math.log10(a), lb = Math.log10(b);
+      return Math.pow(10, la + (lb - la) * t);
+    }
+
+    function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+    // ====== UI elements ======
+    const scaleBig = document.getElementById('scaleBig');
+    const scaleSmall = document.getElementById('scaleSmall');
+    const compareBig = document.getElementById('compareBig');
+    const compareSmall = document.getElementById('compareSmall');
+
+    function formatMetricFromUm(um){
+      // returns a nice string (µm, mm) with sensible precision
+      if (um < 1) return `${um.toFixed(2)} µm`;
+      if (um < 10) return `${um.toFixed(1)} µm`;
+      if (um < 1000) return `${Math.round(um)} µm`;
+      const mm = um / 1000;
+      if (mm < 10) return `${mm.toFixed(2)} mm`;
+      if (mm < 100) return `${mm.toFixed(1)} mm`;
+      return `${Math.round(mm)} mm`;
+    }
+
+    function niceRulerLengthUm(umPerPx){
+      // Choose a ruler size that lands on 1/2/5 x 10^n steps in µm
+      const targetPx = 240; // ideal ruler length in px on screen
+      const targetUm = umPerPx * targetPx;
+      const pow = Math.pow(10, Math.floor(Math.log10(targetUm)));
+      const candidates = [1,2,5,10].map(m => m * pow);
+      let best = candidates[0];
+      for (const c of candidates){
+        if (Math.abs(c - targetUm) < Math.abs(best - targetUm)) best = c;
+      }
+      return best;
+    }
+
+    // ====== Scroll progress ======
+    const scroller = document.getElementById('scroller');
+    function getProgress(){
+      const rect = scroller.getBoundingClientRect();
+      const total = scroller.offsetHeight - window.innerHeight;
+      const scrolled = -rect.top;
+      return clamp01(scrolled / total);
+    }
+
+    // ====== Draw loop ======
+    function draw(){
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // background
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle = '#0b0d12';
+      ctx.fillRect(0,0,w,h);
+
+      const t = getProgress();
+
+      // log zoom: micrometers per pixel
+      const umPerPx = logLerp(UM_PER_PX_MIN, UM_PER_PX_MAX, t);
+
+      // center of stage
+      const cx = w * 0.5;
+      const cy = h * 0.54;
+
+      // faint grid
+      ctx.save();
+      ctx.globalAlpha = 0.20;
+      ctx.strokeStyle = 'rgba(232,236,243,.10)';
+      const gridUm = niceRulerLengthUm(umPerPx); // reuse for grid spacing
+      const gridPx = gridUm / umPerPx;
+      const startX = cx % gridPx;
+      const startY = cy % gridPx;
+      for(let x = startX; x < w; x += gridPx){
+        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+      }
+      for(let y = startY; y < h; y += gridPx){
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+      }
+      ctx.restore();
+
+      // ====== Draw S. mutans (yellow) ======
+      const smDiamPx = SM_DIAM_UM / umPerPx;
+      const smR = Math.max(1.2, smDiamPx/2);
+
+      ctx.save();
+      ctx.fillStyle = '#ffdd7a';
+      ctx.globalAlpha = 0.95;
+      ctx.beginPath();
+      ctx.arc(cx - w*0.18, cy, smR, 0, Math.PI*2);
+      ctx.fill();
+
+      // subtle outline
+      ctx.strokeStyle = 'rgba(0,0,0,.35)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+
+      // label (only when visible enough)
+      if (smDiamPx > 6){
+        ctx.save();
+        ctx.fillStyle = 'rgba(232,236,243,.85)';
+        ctx.font = '12px ui-sans-serif, system-ui';
+        ctx.fillText('S. mutans (single cell)', cx - w*0.18 - 80, cy - smR - 14);
+        ctx.restore();
+      }
+      if (smDiamPx < 4 && smDiamPx >= 2){
+        ctx.save();
+        ctx.fillStyle = 'rgba(232,236,243,.85)';
+        ctx.font = '12px ui-sans-serif, system-ui';
+        ctx.fillText('It\'s getting really small eh?', cx - w*0.18 - 80, cy - smR - 14);
+        ctx.restore();
+      }
+      if (smDiamPx < 2 && smDiamPx >= 1 ){
+        ctx.save();
+        ctx.fillStyle = 'rgba(232,236,243,.85)';
+        ctx.font = '12px ui-sans-serif, system-ui';
+        ctx.fillText('Keep scrolling!', cx - w*0.18 - 80, cy - smR - 14);
+        ctx.restore();
+      }
+      if (smDiamPx < 1 ){
+        ctx.save();
+        ctx.fillStyle = 'rgba(232,236,243,.85)';
+        ctx.font = '12px ui-sans-serif, system-ui';
+        ctx.fillText('S. mutans (no longer to scale)', cx - w*0.18 - 80, cy - smR - 14);
+        ctx.restore();
+      }
+
+      // ====== Draw molar crown footprint (blue) ======
+      // Convert crown dimensions to px
+      const molarW = MOLAR_CO_UM / umPerPx; // use CO as width
+      const molarH = MOLAR_MD_UM / umPerPx; // use MD as height
+
+      // keep it centered to the right
+      const mx = cx + w*0.18;
+      const my = cy;
+
+      // rounded rect helper
+      function roundRect(x,y,width,height,r){
+        const rr = Math.min(r, width/2, height/2);
+        ctx.beginPath();
+        ctx.moveTo(x+rr, y);
+        ctx.arcTo(x+width, y, x+width, y+height, rr);
+        ctx.arcTo(x+width, y+height, x, y+height, rr);
+        ctx.arcTo(x, y+height, x, y, rr);
+        ctx.arcTo(x, y, x+width, y, rr);
+        ctx.closePath();
+      }
+
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+
+      // if it gets absurdly huge, fade it to avoid “blue screen”
+      const maxDim = Math.max(molarW, molarH);
+      if (maxDim > Math.max(w,h)*2) ctx.globalAlpha = 0.40;
+
+      ctx.fillStyle = '#7aa7ff';
+      const rr = Math.max(8, Math.min(34, maxDim * 0.08));
+      roundRect(mx - molarW/2, my - molarH/2, molarW, molarH, rr);
+      ctx.fill();
+
+      // outline
+      ctx.strokeStyle = 'rgba(0,0,0,.35)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.restore();
+
+      if (maxDim > 30 && maxDim < 1200){
+        ctx.save();
+        ctx.fillStyle = 'rgba(232,236,243,.85)';
+        ctx.font = '12px ui-sans-serif, system-ui';
+        ctx.fillText('Mandibular Molar Crown (CO x MD)', mx - 120, my - molarH/2 - 14);
+        ctx.restore();
+      }
+
+      // ====== Ruler ======
+      const rulerUm = niceRulerLengthUm(umPerPx);
+      const rulerPx = rulerUm / umPerPx;
+
+      const rx = 24;
+      const ry = h - 64;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(232,236,243,.65)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx + rulerPx, ry);
+      ctx.stroke();
+
+      // end ticks
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(rx, ry - 10); ctx.lineTo(rx, ry + 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(rx + rulerPx, ry - 10); ctx.lineTo(rx + rulerPx, ry + 10); ctx.stroke();
+
+      ctx.fillStyle = 'rgba(232,236,243,.80)';
+      ctx.font = '12px ui-sans-serif, system-ui';
+      ctx.fillText(`${formatMetricFromUm(rulerUm)}`, rx, ry - 14);
+      ctx.restore();
+
+      // ====== Update HUD text ======
+      scaleBig.textContent = `Zoom: ${formatMetricFromUm(umPerPx)} per pixel`;
+      scaleSmall.textContent =
+        `Ruler: ${formatMetricFromUm(rulerUm)} • ` +
+        `S. mutans appears ${Math.max(1, Math.round(smDiamPx))} px across`;
+
+      const ratio = (Math.max(MOLAR_CO_UM, MOLAR_MD_UM)) / SM_DIAM_UM; // how many bacterial diameters across
+      // show a human-friendly ratio summary but keep it grounded
+      compareBig.textContent = `Size gap: ~${Math.round(ratio).toLocaleString()}×`;
+      compareSmall.textContent = `Across: molar crown width ÷ S. mutans diameter (roughly)`;
+
+      requestAnimationFrame(draw);
+    }
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>
